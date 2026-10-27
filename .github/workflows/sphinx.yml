@@ -53,5 +53,28 @@ jobs:
     needs: build_docs
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+      - name: Report deploy start to Rollouts
+        id: rollouts
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CHANGE_MONITOR_ENV: github-pages
+          CHANGE_MONITOR_SERVICE: docs
+          DEPLOY_VERSION: ${{ github.sha }}
+          CHANGE_MONITOR_ACTOR: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          bash .github/scripts/rollouts-reporter.sh bootstrap
+          bash .github/scripts/rollouts-reporter.sh start
       - uses: actions/deploy-pages@v5
         id: deployment
+      - name: Report deploy finish to Rollouts
+        if: always()
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CHANGE_MONITOR_ENV: github-pages
+          CHANGE_MONITOR_SERVICE: docs
+          DEPLOY_VERSION: ${{ github.sha }}
+          CHANGE_MONITOR_ACTOR: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ROLLOUTS_DEPLOYMENT: ${{ steps.rollouts.outputs.deployment }}
+          ROLLOUTS_OUTCOME: ${{ steps.deployment.outcome }}
+        run: bash .github/scripts/rollouts-reporter.sh finish
